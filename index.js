@@ -22,7 +22,11 @@ TransformerStream.prototype.write = function (data) {
   }
 };
 
-TransformerStream.prototype.end = function () {
+TransformerStream.prototype.end = function (data) {
+  if (data) {
+    this.chunks.push(data);
+  }
+
   var self = this;
   var emit = function(data) {
     self.emit('data', data);
@@ -38,10 +42,14 @@ TransformerStream.prototype.end = function () {
 };
 
 
-module.exports = function transformerProxy(transformerFunction, options) {
+module.exports = function transformerProxy(transformerFunction, headerFunction, options) {
   var identity = function (data) {
     return data;
   };
+
+  if (typeof headerFunction != 'function') {
+    options = headerFunction;
+  }
 
   if (!options) {
     options = {};
@@ -87,6 +95,9 @@ module.exports = function transformerProxy(transformerFunction, options) {
 
       if (headers) {
         delete headers['content-length'];
+        if (typeof headerFunction === 'function') {
+          headerFunction(req, res, headers);
+        }
       }
 
       resWriteHead.apply(null, arguments);
