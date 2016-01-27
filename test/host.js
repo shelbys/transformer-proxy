@@ -12,7 +12,6 @@ var basicHTML = "<html><head></head><body>A simple HTML file</body></html>";
 var proxiedPort = 3000;
 var proxyPort = 8013;
 
-
 test('Streams can change the response size', function (t) {
   t.plan(1);
 
@@ -201,7 +200,7 @@ test('Response headers can be modified', function (t) {
     res.on('end', function () {
       proxyServer.close();
       proxiedServer.close();
-      t.end();
+      if(!t._ended) t.end();
     });
   });
 });
