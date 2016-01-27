@@ -13,13 +13,13 @@ $ npm install transformer-proxy
 
 ## Basic example
 
-A basic example can be found in ```examples/simple.js```. The quintessence is that you can tell your connect-app to use an own function for transforming all data.
+A basic example can be found in ```examples/simple.js```. The quintessence is that you can tell your connect-app to use your own callback function to transform the data.
 
 ```javascript
-var transformerFunction = function (data, req) {
+var transformerFunction = function (data, req, res) {
   // do something with the data and return it
   return data + "\n // an additional line the end of every file";
-}
+};
 app.use(transformerProxy(transformerFunction));
 ```
 
@@ -41,14 +41,49 @@ A simple HTML file
 // an additional line the end of every file
 ```
 
+## Using promises
+
+The transformation callback function may also return a [promise](https://www.npmjs.com/package/promise). This is really useful for cases when the data is being transformed asynchronously (e.g. gunzipped, processed and then gzipped back). A promise-based example can be found in ```examples/promise.js```:
+
+```javascript
+var transformerFunction = function (data, req, res) {
+  return new Promise(function(resolve, reject) {
+    http.get('http://google.com/', function(response) {
+      resolve(data + '<br />Google.com request status code: ' + response.statusCode);
+    }).on('error', function(error) {
+      reject(error.message);
+    });
+  });
+};
+app.use(transformerProxy(transformerFunction));
+```
+
 ## Transform only data with a certain URL
 
-Just pass an options object as the second parameter to ```transformerProxy``` which has a match attribute.
+Just pass an options object as the second parameter to ```transformerProxy``` which has a `match` attribute.
 For example, if you want to modify only JavaScript files, you could use:
 
 ```javascript
-transformerProxy(transformerFunction, {match : /\.js([^\w]|$)/})
+transformerProxy(transformerFunction, {match : /\.js([^\w]|$)/});
+```
+
+## Transform response headers
+
+Just pass an options object as the second parameter to ```transformerProxy``` which has a `headers` attribute.
+This attribute should be an array of objects having name and value attributes. Headers with null values will be removed.
+For example, if you want to modify the content type header and remove the server header, you could use:
+
+```javascript
+var headers = [{
+  'name' : 'content-type',
+  'value' : 'application/json'
+}, {
+  'name' : 'server',
+  'value' : null
+}];
+
+transformerProxy(transformerFunction, {headers : headers});
 ```
 
 ## License
-MIT &copy; Philipp Otto 2014
+MIT &copy; Philipp Otto

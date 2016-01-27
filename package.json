@@ -6,7 +6,7 @@
     "middleware",
     "streaming"
   ],
-  "version": "1.1.0",
+  "version": "0.3.3",
   "author": {
     "name": "Philipp Otto",
     "email": "philipp.otto@live.com"
@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "util": "^0.10.3",
-    "stream": "0.0.1"
+    "stream": "0.0.1",
+    "promise": "^7.0.4"
   },
   "devDependencies": {
     "tap": "0.4.0",

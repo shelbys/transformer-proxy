@@ -1,10 +1,14 @@
-var util = require("util");
-var stream = require("stream");
+'use strict';
+
+var util = require('util');
+var stream = require('stream');
+var Promise = require('promise');
 
 
-var TransformerStream = function (transformerFunction, req) {
+var TransformerStream = function (transformerFunction, req, res) {
   this.transformerFunction = transformerFunction;
   this.req = req;
+  this.res = res;
   this.readable = true;
   this.writable = true;
   this.chunks = [];
@@ -18,38 +22,35 @@ TransformerStream.prototype.write = function (data) {
   }
 };
 
-TransformerStream.prototype.end = function (data) {
-  if (data) {
-    this.chunks.push(data);
+TransformerStream.prototype.end = function () {
+  var self = this;
+  var emit = function(data) {
+    self.emit('data', data);
+    self.emit('end');
+  };
+  var data = this.transformerFunction(Buffer.concat(this.chunks), this.req, this.res);
+
+  if (data.constructor.name === 'Promise') {
+    data.then(emit, emit);
+  } else {
+    emit(data);
   }
-  self = this;
-  this.transformerFunction(Buffer.concat(this.chunks), this.req, function(data) {
-    self.emit("data", data);
-    self.emit("end");
-  });
 };
 
 
-module.exports = function transformerProxy(transformerFunction, headerFunction, options) {
-
-  if (typeof headerFunction != 'function') {
-    options = headerFunction;
-  }
+module.exports = function transformerProxy(transformerFunction, options) {
+  var identity = function (data) {
+    return data;
+  };
 
   if (!options) {
     options = {};
   }
 
-  var identity = function(data) { return data };
-
   return function transformerProxy(req, res, next) {
+    var identityOrTransformer = (options.match && !options.match.test(req.url)) ? identity : transformerFunction;
 
-    var identityOrTransformer = transformerFunction;
-    if (options.match && !options.match.test(req.url)) {
-      identityOrTransformer = identity;
-    }
-
-    var transformerStream = new TransformerStream(identityOrTransformer, req);
+    var transformerStream = new TransformerStream(identityOrTransformer, req, res);
 
     var resWrite = res.write.bind(res);
     var resEnd = res.end.bind(res);
@@ -73,13 +74,24 @@ module.exports = function transformerProxy(transformerFunction, headerFunction, 
 
     res.writeHead = function (code, headers) {
       res.removeHeader('Content-Length');
-      if (headers) { delete headers['content-length']; }
-      if (typeof headerFunction === 'function') {
-        headerFunction(req, res, headers);
+
+      if (options.headers) {
+        options.headers.forEach(function (header) {
+          if (header.value) {
+            res.setHeader(header.name, header.value);
+          } else {
+            res.removeHeader(header.name);
+          }
+        });
       }
+
+      if (headers) {
+        delete headers['content-length'];
+      }
+
       resWriteHead.apply(null, arguments);
     };
 
     next();
   }
-}
+};
