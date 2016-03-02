@@ -32,7 +32,7 @@ TransformerStream.prototype.end = function (data) {
     self.emit('data', data);
     self.emit('end');
   };
-  var data = this.transformerFunction(Buffer.concat(this.chunks), this.req, this.res);
+  var data = this.transformerFunction(this.chunks.join(""), this.req, this.res);
 
   if (data.constructor.name === 'Promise') {
     data.then(emit, emit);
